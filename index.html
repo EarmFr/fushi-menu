@@ -2,45 +2,60 @@
 <html lang="fr">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Chargement du menu...</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Commande à table</title>
     <style>
-        body { font-family: sans-serif; text-align: center; margin-top: 100px; color: #333; }
-        .spinner { border: 4px solid #f3f3f3; border-top: 4px solid #3498db; border-radius: 50%; width: 40px; height: 40px; animation: spin 1s linear infinite; margin: 20px auto; }
+        html, body { margin: 0; padding: 0; width: 100%; height: 100%; overflow: hidden; font-family: sans-serif; }
+        iframe { border: none; width: 100%; height: 100%; display: none; }
+        .loader-container { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100%; color: #333; }
+        .spinner { border: 4px solid #f3f3f3; border-top: 4px solid #3498db; border-radius: 50%; width: 40px; height: 40px; animation: spin 1s linear infinite; margin-bottom: 20px; }
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
     </style>
 </head>
 <body>
-    <div class="spinner"></div>
-    <p>Connexion et redirection vers le menu Zelty...</p>
+
+    <div id="loader" class="loader-container">
+        <div class="spinner"></div>
+        <p>Connexion sécurisée à la table...</p>
+    </div>
+
+    <!-- REMPLACEZ XXXXX PAR VOTRE VRAIE URL ZELTY -->
+    <iframe id="menuFrame" src="https://fushitang.zelty-order.fr/restaurants/7684"></iframe>
 
     <script>
-        // 1. Récupérer le numéro de table depuis l'URL (ex: ?table=5)
+        // 1. Récupération stricte de votre paramètre table_number
         const urlParams = new URLSearchParams(window.location.search);
-        const numeroTable = urlParams.get('table_number') || 'Inconnue';
+        const numeroTable = urlParams.get('table_number') || '1';
 
-        // 2. Mettre l'URL de VOTRE page de commande Zelty
-        const urlZelty = "https://fushitang.zelty-order.fr/restaurants/7684"
-"; 
+        const iframe = document.getElementById('menuFrame');
+        const loader = document.getElementById('loader');
 
-        // Ouvre l'application Zelty dans la même fenêtre
-        const fenetreMenu = window.location.replace(urlZelty);
+        // Dès que Zelty commence à charger dans l'iframe, on l'affiche
+        iframe.addEventListener('load', () => {
+            loader.style.display = 'none';
+            iframe.style.display = 'block';
+            
+            // Lance la vérification du formulaire à l'intérieur de l'iframe
+            const verificationId = setInterval(injecterDonnees, 150);
+        });
 
-        // 3. Injecter les données anonymes dès que la page Zelty se charge
-        window.addEventListener('DOMContentLoaded', () => {
-            const injecterDonnees = () => {
-                const prenom = document.querySelector('input[name="first_name"]');
-                const nom = document.querySelector('input[name="last_name"]');
-                const telephone = document.querySelector('input[name="phone"]');
-                const email = document.querySelector('input[name="email"]');
+        function injecterDonnees() {
+            try {
+                // On cherche les champs à l'intérieur de l'iframe Zelty
+                const iframeDoc = iframe.contentDocument || iframe.contentWindow.document;
+                
+                const prenom = iframeDoc.querySelector('input[name="first_name"]');
+                const nom = iframeDoc.querySelector('input[name="last_name"]');
+                const telephone = iframeDoc.querySelector('input[name="phone"]');
+                const email = iframeDoc.querySelector('input[name="email"]');
 
                 if (prenom && nom && telephone && email) {
-                    prenom.value = "Anonyme";
-                    nom.value = "Anonyme";
+                    prenom.value = "Client";
+                    nom.value = "Table " + numeroTable;
                     telephone.value = "0600000000";
                     email.value = "anonyme_t" + numeroTable + "@restaurant.fr";
 
-                    // Événements obligatoires pour Next.js / React
+                    // Déclencheurs obligatoires pour l'application React/Next.js de Zelty
                     const event = new Event('input', { bubbles: true });
                     prenom.dispatchEvent(event);
                     nom.dispatchEvent(event);
@@ -49,11 +64,11 @@
                     
                     clearInterval(verificationId);
                 }
-            };
-
-            // Vérifie la présence du formulaire toutes les 200ms
-            const verificationId = setInterval(injecterDonnees, 200);
-        });
+            } catch (e) {
+                // Si Zelty bloque les iframes (sécurité CSP), l'erreur sera capturée ici
+                console.log("Tentative de connexion au formulaire...");
+            }
+        }
     </script>
 </body>
 </html>
